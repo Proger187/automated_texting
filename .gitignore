@@ -1,0 +1,13 @@
+BulkMessenger_ProjectSpec_TypeScript.docx
+BulkMessenger_ProjectSpec.docx
+fixture.md
+project.md
+trial table.xlsx
+~$*
+dist
+.wwebjs_cache
+.wwebjs_auth
+dist-electron
+node_modules
+release
+electron-builder.config.js
