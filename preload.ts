@@ -61,6 +61,9 @@ const api: ElectronAPI = {
   getWhatsappReady: (): Promise<boolean> =>
     ipcRenderer.invoke('get-whatsapp-ready'),
 
+  disconnectWhatsapp: (): Promise<void> =>
+    ipcRenderer.invoke('disconnect-whatsapp'),
+
   listAccounts: (type?: CredentialType): Promise<Account[]> =>
     ipcRenderer.invoke('list-accounts', type),
 

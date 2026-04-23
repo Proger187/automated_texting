@@ -6,12 +6,14 @@ interface SettingsSchema {
   defaultCountryCode: string
   concurrency: number
   interMessageDelayMs: number
+  delayMin: number
+  delayMax: number
 }
 
 // Shared settings store — also written by Module 8's 'save-settings' IPC handler
 const settingsStore = new Store<SettingsSchema>({
   name: 'settings',
-  defaults: { delayMs: 0, defaultCountryCode: '', concurrency: 1, interMessageDelayMs: 1500 },
+  defaults: { delayMs: 0, defaultCountryCode: '', concurrency: 1, interMessageDelayMs: 1500, delayMin: 0, delayMax: 0 },
 })
 
 /** Resolves after `ms` milliseconds. */
@@ -75,4 +77,36 @@ export function saveInterMessageDelay(ms: number): void {
 /** Read the persisted inter-message delay. Returns 1500 if not set. */
 export function loadInterMessageDelay(): number {
   return settingsStore.get('interMessageDelayMs')
+}
+
+/** Persist the minimum random delay (0 = disabled). */
+export function saveDelayMin(ms: number): void {
+  settingsStore.set('delayMin', Math.max(0, ms))
+}
+
+/** Read the persisted minimum random delay. Returns 0 if not set. */
+export function loadDelayMin(): number {
+  return settingsStore.get('delayMin')
+}
+
+/** Persist the maximum random delay (0 = disabled). */
+export function saveDelayMax(ms: number): void {
+  settingsStore.set('delayMax', Math.max(0, ms))
+}
+
+/** Read the persisted maximum random delay. Returns 0 if not set. */
+export function loadDelayMax(): number {
+  return settingsStore.get('delayMax')
+}
+
+/**
+ * Picks an actual delay from the configured range.
+ * If `min > 0 && max > min`, returns a random integer in [min, max].
+ * Otherwise falls back to the fixed `delayMs` value.
+ */
+export function resolveDelay(fixed: number, min: number, max: number): number {
+  if (min > 0 && max > min) {
+    return Math.floor(Math.random() * (max - min + 1)) + min
+  }
+  return fixed
 }

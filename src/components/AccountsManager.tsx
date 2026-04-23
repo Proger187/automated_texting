@@ -530,26 +530,42 @@ function TelegramUserForm({ creds, accountId, onChange }: TelegramUserFormProps)
 function WhatsAppQrPane(): JSX.Element {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
   const [isReady, setIsReady] = useState(false)
+  const [disconnecting, setDisconnecting] = useState(false)
 
   useEffect(() => {
     if (!window.electronAPI) return
     void window.electronAPI.getWhatsappReady().then((ready) => { if (ready) setIsReady(true) })
     void window.electronAPI.getWhatsappQr().then((cached) => { if (cached) setQrDataUrl(cached) })
-    const unsubQr = window.electronAPI.onWhatsappQr((dataUrl) => setQrDataUrl(dataUrl))
-    const unsubReady = window.electronAPI.onWhatsappReady(() => setIsReady(true))
+    const unsubQr = window.electronAPI.onWhatsappQr((dataUrl) => { setQrDataUrl(dataUrl); setIsReady(false) })
+    const unsubReady = window.electronAPI.onWhatsappReady(() => { setIsReady(true); setQrDataUrl(null) })
     return () => { unsubQr(); unsubReady() }
   }, [])
 
+  async function handleDisconnect(): Promise<void> {
+    setDisconnecting(true)
+    setIsReady(false)
+    setQrDataUrl(null)
+    try { await window.electronAPI.disconnectWhatsapp() }
+    finally { setDisconnecting(false) }
+  }
+
   if (isReady) {
     return (
-      <div className="flex flex-col items-center justify-center border-2 border-dashed border-green-300 rounded-xl p-8 bg-green-50">
-        <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mb-3">
+      <div className="flex flex-col items-center justify-center border-2 border-dashed border-green-300 rounded-xl p-8 bg-green-50 gap-4">
+        <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
           <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
         <p className="text-sm font-semibold text-green-700">WhatsApp Connected</p>
-        <p className="text-xs text-green-500 mt-1">Session active — no QR scan needed.</p>
+        <p className="text-xs text-green-500">Session active — no QR scan needed.</p>
+        <button
+          onClick={() => void handleDisconnect()}
+          disabled={disconnecting}
+          className="px-4 py-2 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-50 text-sm font-semibold transition-colors"
+        >
+          {disconnecting ? 'Disconnecting…' : 'Disconnect & show new QR'}
+        </button>
       </div>
     )
   }

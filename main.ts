@@ -3,10 +3,10 @@ import path from 'path'
 import { saveCredentials, loadCredentials } from './src/services/credentialsStore'
 import type { CredentialType } from './src/types/ipc'
 import type { Credentials } from './src/services/credentialsStore'
-import { initWhatsApp } from './src/adapters/whatsappAdapter'
+import { initWhatsApp, destroyWhatsApp } from './src/adapters/whatsappAdapter'
 import type { SendMessagesArgs } from './src/types/ipc'
 import { startQueue, pauseQueue, resumeQueue, cancelQueue } from './src/services/sendQueue'
-import { saveDelayOverride, loadDelayOverride, saveDefaultCountryCode, loadDefaultCountryCode, saveConcurrency, loadConcurrency, saveInterMessageDelay, loadInterMessageDelay } from './src/services/rateLimiter'
+import { saveDelayOverride, loadDelayOverride, saveDefaultCountryCode, loadDefaultCountryCode, saveConcurrency, loadConcurrency, saveInterMessageDelay, loadInterMessageDelay, saveDelayMin, loadDelayMin, saveDelayMax, loadDelayMax } from './src/services/rateLimiter'
 import QRCode from 'qrcode'
 import type { AppSettings } from './src/types/ipc'
 import { listAccounts, listAccountsByType, saveAccount, deleteAccount, getAccount } from './src/services/accountsStore'
@@ -116,6 +116,8 @@ ipcMain.handle('save-settings', async (_event, settings: AppSettings) => {
   saveDefaultCountryCode(settings.defaultCountryCode ?? '')
   saveConcurrency(settings.concurrency ?? 1)
   saveInterMessageDelay(settings.interMessageDelayMs ?? 1500)
+  saveDelayMin(settings.delayMin ?? 0)
+  saveDelayMax(settings.delayMax ?? 0)
 })
 
 ipcMain.handle('load-settings', async (): Promise<AppSettings> => {
@@ -124,11 +126,31 @@ ipcMain.handle('load-settings', async (): Promise<AppSettings> => {
     defaultCountryCode: loadDefaultCountryCode(),
     concurrency: loadConcurrency(),
     interMessageDelayMs: loadInterMessageDelay(),
+    delayMin: loadDelayMin(),
+    delayMax: loadDelayMax(),
   }
 })
 
 ipcMain.handle('get-whatsapp-qr', () => lastQrDataUrl)
 ipcMain.handle('get-whatsapp-ready', () => isWhatsAppReady)
+
+function startWhatsApp(): void {
+  initWhatsApp(
+    (qr) => {
+      QRCode.toDataURL(qr, { width: 256, margin: 2 })
+        .then((dataUrl) => { lastQrDataUrl = dataUrl; mainWindow?.webContents.send('whatsapp-qr', dataUrl) })
+        .catch(() => {})
+    },
+    () => { isWhatsAppReady = true; mainWindow?.webContents.send('whatsapp-ready') },
+  ).catch(() => {})
+}
+
+ipcMain.handle('disconnect-whatsapp', async () => {
+  isWhatsAppReady = false
+  lastQrDataUrl = null
+  await destroyWhatsApp()
+  startWhatsApp()
+})
 
 ipcMain.handle('list-accounts', (_e, type?: CredentialType) =>
   type ? listAccountsByType(type) : listAccounts())
@@ -308,22 +330,7 @@ ipcMain.handle('complete-instagram-challenge', async (_e, accountId: string, cod
 // Initialise WhatsApp client on startup so QR appears immediately
 app.on('ready', () => {
   createWindow()
-  initWhatsApp(
-    (qr) => {
-      QRCode.toDataURL(qr, { width: 256, margin: 2 })
-        .then((dataUrl) => {
-          lastQrDataUrl = dataUrl
-          mainWindow?.webContents.send('whatsapp-qr', dataUrl)
-        })
-        .catch(() => { /* qr conversion failure is non-fatal */ })
-    },
-    () => {
-      isWhatsAppReady = true
-      mainWindow?.webContents.send('whatsapp-ready')
-    },
-  ).catch(() => {
-    // WhatsApp init failures are non-fatal
-  })
+  startWhatsApp()
 })
 
 app.on('window-all-closed', () => {

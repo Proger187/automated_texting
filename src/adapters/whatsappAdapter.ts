@@ -55,6 +55,18 @@ export function initWhatsApp(
   return initPromise
 }
 
+/**
+ * Destroys the current client and clears all cached state so a fresh QR is generated.
+ */
+export async function destroyWhatsApp(): Promise<void> {
+  initPromise = null
+  isAuthenticated = false
+  if (cachedClient) {
+    try { await cachedClient.destroy() } catch { /* ignore */ }
+    cachedClient = null
+  }
+}
+
 export class WhatsAppAdapter implements IMessagingAdapter {
   async send(
     contact: string,

@@ -1,6 +1,6 @@
 import { render } from './templateEngine'
 import { getAdapter } from '../adapters/index'
-import { delay } from './rateLimiter'
+import { delay, resolveDelay } from './rateLimiter'
 import { validateContact } from './contactValidator'
 import type { CredentialType, ProgressPayload } from '../types/ipc'
 
@@ -35,6 +35,10 @@ export interface QueueOptions {
   messageSequence?: string[]
   /** Delay in ms between messages within a sequence for the same contact (default 1500). */
   interMessageDelayMs?: number
+  /** Minimum random delay in ms between contacts (0 = disabled). When set with delayMax > delayMin, overrides delayMs with a random value. */
+  delayMin?: number
+  /** Maximum random delay in ms between contacts (0 = disabled). */
+  delayMax?: number
   onProgress: (p: ProgressPayload) => void
   onComplete: (r: QueueResult) => void
 }
@@ -115,6 +119,8 @@ export async function startQueue(options: QueueOptions): Promise<void> {
     emailSubject,
     messageSequence,
     interMessageDelayMs = 1500,
+    delayMin = 0,
+    delayMax = 0,
     onProgress,
     onComplete,
   } = options
@@ -249,8 +255,9 @@ export async function startQueue(options: QueueOptions): Promise<void> {
     inFlight.push(processContact(i))
 
     // Inter-dispatch delay (rate-limiting between slot starts)
-    if (delayMs > 0 && i < total - 1) {
-      await delay(delayMs)
+    const actualDelay = resolveDelay(delayMs, delayMin, delayMax)
+    if (actualDelay > 0 && i < total - 1) {
+      await delay(actualDelay)
     }
   }
 

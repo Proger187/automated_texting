@@ -27,6 +27,10 @@ export interface SendMessagesArgs {
   messageSequence?: string[]
   /** Delay in ms between messages within a sequence for the same contact (default 1500). */
   interMessageDelayMs?: number
+  /** Minimum random delay in ms between contacts (0 = disabled). */
+  delayMin?: number
+  /** Maximum random delay in ms between contacts (0 = disabled). When delayMin > 0 and delayMax > delayMin the actual delay is randomized. */
+  delayMax?: number
 }
 
 export interface AppSettings {
@@ -37,6 +41,10 @@ export interface AppSettings {
   concurrency: number
   /** Delay in ms between messages within a sequence for the same contact (default 1500). */
   interMessageDelayMs?: number
+  /** Minimum random delay in ms between contacts (0 = disabled). */
+  delayMin?: number
+  /** Maximum random delay in ms between contacts. When delayMin > 0 and delayMax > delayMin the actual delay per contact is randomized. */
+  delayMax?: number
 }
 
 export interface ElectronAPI {
@@ -53,6 +61,7 @@ export interface ElectronAPI {
   getWhatsappQr: () => Promise<string | null>
   onWhatsappReady: (callback: () => void) => () => void
   getWhatsappReady: () => Promise<boolean>
+  disconnectWhatsapp: () => Promise<void>
   listAccounts: (type?: CredentialType) => Promise<import('./accounts').Account[]>
   saveAccount: (account: import('./accounts').Account) => Promise<void>
   deleteAccount: (id: string) => Promise<void>

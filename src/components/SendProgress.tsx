@@ -75,6 +75,8 @@ export default function SendProgress(_props: Props): JSX.Element {
     let defaultCountryCode: string | undefined
     let concurrency: number | undefined
     let interMessageDelayMs: number | undefined
+    let delayMin: number | undefined
+    let delayMax: number | undefined
 
     if (window.electronAPI) {
       try {
@@ -83,6 +85,8 @@ export default function SendProgress(_props: Props): JSX.Element {
         if (settings.defaultCountryCode) defaultCountryCode = settings.defaultCountryCode
         if (settings.concurrency > 1) concurrency = settings.concurrency
         if (settings.interMessageDelayMs !== undefined) interMessageDelayMs = settings.interMessageDelayMs
+        if (settings.delayMin !== undefined) delayMin = settings.delayMin
+        if (settings.delayMax !== undefined) delayMax = settings.delayMax
       } catch {
         // silently fall back to defaults
       }
@@ -127,6 +131,8 @@ export default function SendProgress(_props: Props): JSX.Element {
         concurrency,
         emailSubject: emailSubject || undefined,
         interMessageDelayMs,
+        delayMin,
+        delayMax,
       })
     }
   }

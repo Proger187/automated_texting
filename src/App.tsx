@@ -87,6 +87,9 @@ export default function App(): JSX.Element {
   const [currentStep, setCurrentStep] = useState<Step>(1)
   const [showSettings, setShowSettings] = useState(false)
   const [delayMs, setDelayMs] = useState(0)
+  const [delayMode, setDelayMode] = useState<'fixed' | 'random'>('fixed')
+  const [delayMin, setDelayMin] = useState(0)
+  const [delayMax, setDelayMax] = useState(0)
   const [defaultCountryCode, setDefaultCountryCode] = useState('')
   const [concurrency, setConcurrency] = useState(1)
   const [interMessageDelayMs, setInterMessageDelayMs] = useState(1500)
@@ -117,6 +120,11 @@ export default function App(): JSX.Element {
         .loadSettings()
         .then((s: AppSettings) => {
           setDelayMs(s.delayMs)
+          const min = s.delayMin ?? 0
+          const max = s.delayMax ?? 0
+          setDelayMin(min)
+          setDelayMax(max)
+          setDelayMode(min > 0 && max > min ? 'random' : 'fixed')
           setDefaultCountryCode(s.defaultCountryCode ?? '')
           setConcurrency(s.concurrency ?? 1)
           setInterMessageDelayMs(s.interMessageDelayMs ?? 1500)
@@ -150,7 +158,14 @@ export default function App(): JSX.Element {
   // ── Settings handlers ────────────────────────────────────────────────────────
   async function handleSaveSettings(): Promise<void> {
     if (window.electronAPI) {
-      await window.electronAPI.saveSettings({ delayMs, defaultCountryCode, concurrency, interMessageDelayMs })
+      await window.electronAPI.saveSettings({
+        delayMs: delayMode === 'fixed' ? delayMs : 0,
+        defaultCountryCode,
+        concurrency,
+        interMessageDelayMs,
+        delayMin: delayMode === 'random' ? delayMin : 0,
+        delayMax: delayMode === 'random' ? delayMax : 0,
+      })
     }
     setShowSettings(false)
   }
@@ -247,28 +262,87 @@ export default function App(): JSX.Element {
             </div>
 
             <div className="flex-1 px-6 py-6 space-y-6 overflow-y-auto">
-              {/* Delay */}
+              {/* Delay between contacts */}
               <div>
-                <label
-                  htmlFor="settings-delay"
-                  className="block text-sm font-semibold text-gray-700 mb-1"
-                >
-                  Delay between messages (ms)
-                </label>
-                <input
-                  id="settings-delay"
-                  type="number"
-                  min={0}
-                  max={60000}
-                  value={delayMs}
-                  onChange={(e) =>
-                    setDelayMs(Math.max(0, parseInt(e.target.value, 10) || 0))
-                  }
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-                />
-                <p className="text-xs text-gray-400 mt-1">
-                  0 = use adapter default (WhatsApp 4 s · Telegram 1 s · Email 0.5 s)
-                </p>
+                <p className="block text-sm font-semibold text-gray-700 mb-2">Delay between contacts</p>
+                {/* Mode toggle */}
+                <div className="flex gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => setDelayMode('fixed')}
+                    className={[
+                      'flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-colors',
+                      delayMode === 'fixed'
+                        ? 'bg-violet-600 text-white border-violet-600'
+                        : 'bg-white text-gray-600 border-gray-300 hover:border-violet-400',
+                    ].join(' ')}
+                  >
+                    Fixed
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDelayMode('random')}
+                    className={[
+                      'flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-colors',
+                      delayMode === 'random'
+                        ? 'bg-violet-600 text-white border-violet-600'
+                        : 'bg-white text-gray-600 border-gray-300 hover:border-violet-400',
+                    ].join(' ')}
+                  >
+                    Random range
+                  </button>
+                </div>
+
+                {delayMode === 'fixed' ? (
+                  <>
+                    <input
+                      id="settings-delay"
+                      type="number"
+                      min={0}
+                      max={60000}
+                      value={delayMs}
+                      onChange={(e) =>
+                        setDelayMs(Math.max(0, parseInt(e.target.value, 10) || 0))
+                      }
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">
+                      0 = use adapter default (WhatsApp 4 s · Telegram 1 s · Email 0.5 s)
+                    </p>
+                  </>
+                ) : (
+                  <div className="flex gap-2 items-center">
+                    <div className="flex-1">
+                      <label htmlFor="settings-delay-min" className="block text-xs text-gray-500 mb-1">Min (ms)</label>
+                      <input
+                        id="settings-delay-min"
+                        type="number"
+                        min={0}
+                        max={60000}
+                        value={delayMin}
+                        onChange={(e) =>
+                          setDelayMin(Math.max(0, parseInt(e.target.value, 10) || 0))
+                        }
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                      />
+                    </div>
+                    <span className="mt-5 text-gray-400 text-sm">–</span>
+                    <div className="flex-1">
+                      <label htmlFor="settings-delay-max" className="block text-xs text-gray-500 mb-1">Max (ms)</label>
+                      <input
+                        id="settings-delay-max"
+                        type="number"
+                        min={0}
+                        max={60000}
+                        value={delayMax}
+                        onChange={(e) =>
+                          setDelayMax(Math.max(0, parseInt(e.target.value, 10) || 0))
+                        }
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Default country code */}
