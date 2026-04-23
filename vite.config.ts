@@ -4,6 +4,12 @@ import electron from 'vite-plugin-electron/simple'
 
 export default defineConfig({
   base: './',
+  server: {
+    watch: {
+      // Ignore Puppeteer/WhatsApp cache and auth dirs to prevent spurious hot reloads
+      ignored: ['**/.wwebjs_cache/**', '**/.wwebjs_auth/**'],
+    },
+  },
   plugins: [
     react(),
     electron({
