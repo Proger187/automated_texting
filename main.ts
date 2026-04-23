@@ -142,6 +142,13 @@ function startWhatsApp(): void {
         .catch(() => {})
     },
     () => { isWhatsAppReady = true; mainWindow?.webContents.send('whatsapp-ready') },
+    () => {
+      // Spontaneous disconnect (phone logout / session revoked) — reset state and reinitialise
+      isWhatsAppReady = false
+      lastQrDataUrl = null
+      mainWindow?.webContents.send('whatsapp-disconnected')
+      startWhatsApp()
+    },
   ).catch(() => {})
 }
 

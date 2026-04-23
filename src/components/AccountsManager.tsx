@@ -538,7 +538,8 @@ function WhatsAppQrPane(): JSX.Element {
     void window.electronAPI.getWhatsappQr().then((cached) => { if (cached) setQrDataUrl(cached) })
     const unsubQr = window.electronAPI.onWhatsappQr((dataUrl) => { setQrDataUrl(dataUrl); setIsReady(false) })
     const unsubReady = window.electronAPI.onWhatsappReady(() => { setIsReady(true); setQrDataUrl(null) })
-    return () => { unsubQr(); unsubReady() }
+    const unsubDisconnected = window.electronAPI.onWhatsappDisconnected(() => { setIsReady(false); setQrDataUrl(null) })
+    return () => { unsubQr(); unsubReady(); unsubDisconnected() }
   }, [])
 
   async function handleDisconnect(): Promise<void> {

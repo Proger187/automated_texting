@@ -58,6 +58,12 @@ const api: ElectronAPI = {
     return () => { ipcRenderer.removeListener('whatsapp-ready', listener) }
   },
 
+  onWhatsappDisconnected: (callback: () => void): (() => void) => {
+    const listener = (): void => callback()
+    ipcRenderer.on('whatsapp-disconnected', listener)
+    return () => { ipcRenderer.removeListener('whatsapp-disconnected', listener) }
+  },
+
   getWhatsappReady: (): Promise<boolean> =>
     ipcRenderer.invoke('get-whatsapp-ready'),
 

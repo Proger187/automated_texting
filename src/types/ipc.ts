@@ -60,6 +60,7 @@ export interface ElectronAPI {
   onWhatsappQr: (callback: (qr: string) => void) => () => void
   getWhatsappQr: () => Promise<string | null>
   onWhatsappReady: (callback: () => void) => () => void
+  onWhatsappDisconnected: (callback: () => void) => () => void
   getWhatsappReady: () => Promise<boolean>
   disconnectWhatsapp: () => Promise<void>
   listAccounts: (type?: CredentialType) => Promise<import('./accounts').Account[]>

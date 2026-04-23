@@ -1,3 +1,5 @@
+import fs from 'fs'
+import path from 'path'
 import { Client, LocalAuth } from 'whatsapp-web.js'
 import type { IMessagingAdapter, SendResult } from './types'
 
@@ -5,6 +7,15 @@ import type { IMessagingAdapter, SendResult } from './types'
 let cachedClient: Client | null = null
 let isAuthenticated = false
 let initPromise: Promise<void> | null = null
+let disconnectCallback: (() => void) | null = null
+
+/** Delete the LocalAuth session folder so the next init always shows a fresh QR. */
+function clearAuthDir(): void {
+  const dir = path.join(process.cwd(), '.wwebjs_auth')
+  try {
+    if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true })
+  } catch { /* ignore — best-effort cleanup */ }
+}
 
 function getClient(): Client {
   if (!cachedClient) {
@@ -23,12 +34,16 @@ function getClient(): Client {
       isAuthenticated = false
       cachedClient = null
       initPromise = null
+      clearAuthDir()
+      disconnectCallback?.()
     })
 
     cachedClient.on('disconnected', () => {
       isAuthenticated = false
       cachedClient = null
       initPromise = null
+      clearAuthDir()  // stale session on disk would prevent QR on next init
+      disconnectCallback?.()
     })
   }
   return cachedClient
@@ -37,9 +52,11 @@ function getClient(): Client {
 export function initWhatsApp(
   onQr: (qr: string) => void,
   onReady?: () => void,
+  onDisconnected?: () => void,
 ): Promise<void> {
   if (initPromise) return initPromise
 
+  disconnectCallback = onDisconnected ?? null
   const client = getClient()
 
   cachedClient!.removeAllListeners('qr')
@@ -59,12 +76,14 @@ export function initWhatsApp(
  * Destroys the current client and clears all cached state so a fresh QR is generated.
  */
 export async function destroyWhatsApp(): Promise<void> {
+  disconnectCallback = null   // suppress the spontaneous-disconnect handler during explicit destroy
   initPromise = null
   isAuthenticated = false
   if (cachedClient) {
     try { await cachedClient.destroy() } catch { /* ignore */ }
     cachedClient = null
   }
+  clearAuthDir()  // force fresh QR on next init
 }
 
 export class WhatsAppAdapter implements IMessagingAdapter {
